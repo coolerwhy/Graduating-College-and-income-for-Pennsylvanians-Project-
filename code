@@ -1,0 +1,95 @@
+*1);
+proc import out=medianincome(rename='Median'n=medinc rename='Mean'n=meaninc)
+datafile='/home/u59250498/sasuser.v94/tingdata/miniproject/Median Income by Zip Code in US.xlsx' 
+dbms=xlsx replace;
+sheet='nation';
+getnames=yes; 
+proc print;
+run;
+
+proc import out=collegegra (rename='Zip Code'n=Zip rename='% College Grad.'n=Collegegrad)
+datafile='/home/u59250498/sasuser.v94/tingdata/miniproject/PA College Graduation By Zip Code.xlsx' 
+dbms=xlsx replace;
+sheet='sheet1';
+getnames=yes; 
+proc print;
+run;
+
+*2);
+proc sort data=collegegra;by Zip;
+data match nograd noinc;
+merge medianincome (in=a) collegegra (in=b); by Zip;
+  if a and b then output match;
+  else if a then output nograd;
+  else if b then output noinc;
+proc print data=match;
+proc print data=nograd;
+proc print data=noinc;
+run;
+*3);
+
+proc freq data=match;
+table zip;
+proc freq data=nograd;
+table zip;
+proc freq data=noinc;
+table zip;
+run;
+
+*4 a);
+
+proc means data =match Q1 Median Q3;
+var Collegegrad;
+run;
+
+*4 b);
+
+
+data match2;
+set match;
+if 0.1915=<Collegegrad then CollGradGroup='4';
+if 0.12375=<Collegegrad<0.1915 then CollGradGroup='3';
+if 0.084=<Collegegrad<0.12375 then CollGradGroup='2';
+if Collegegrad<0.084 then CollGradGroup='1';
+proc contents;
+run;
+
+proc format;
+value $CollGradGroupnew
+      '4'='high'
+      '3'='med_high'
+      '2'='med_low'
+      '1'='low';
+run;
+proc freq data=match2;
+table CollGradGroup;
+format CollGradGroup $CollGradGroupnew.;
+run;
+proc contents data= match2;
+run;
+
+
+
+*4 c);
+*i;
+proc means data=match2 nway noprint;
+  class CollGradGroup; 
+  var medinc pop;
+  output out=meanpopinc mean=meaninc meanpop;
+proc print data=meanpopinc;
+run;
+
+
+*ii;
+proc tabulate data=match2;
+	class CollGradGroup; 
+	var medinc pop;
+	table CollGradGroup,medinc*(mean) pop*(mean);
+run;
+
+
+*iii;
+proc sgplot data=meanpopinc;
+  scatter x=meanpop y=meaninc / group=CollGradGroup;
+run;
+
